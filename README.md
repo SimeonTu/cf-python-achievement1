@@ -89,5 +89,85 @@ for recipe in all_recipes:
 ['Flour', 'Sugar', 'Cocoa powder', 'Eggs', 'Butter', 'Milk', 'Vanilla extract']
 ```
 
+# Exercise 1.3
 
+## Step 1 - Initialize two empty lists: recipes_list and ingredients_list
 
+```
+recipes_list = []
+ingredients_list = []
+```
+
+## Step 2 - Define a function called take_recipe, which takes input from the user for the following variables:
+- name (str): Stores the name of the recipe.
+- cooking_time (int): Stores the cooking time (in minutes).
+- ingredients (list): A list that stores ingredients, each of the string data type.
+- recipe (dictionary): Stores the name, cooking_time, and ingredients variables (e.g., recipe = {'name': name, 'cooking_time': cooking_time, 'ingredients': ingredients}).
+
+```
+def take_recipe():
+    name = input("Name of the recipe: ")
+    cooking_time = int(input("Cooking time (in minutes): "))
+    ingredients = input("Ingredients (ex. Apples, Bananas, ...): ").split(", ")
+
+    recipe = {
+        "name": name,
+        "cooking_time": cooking_time,
+        "ingredients": ingredients
+    }
+    
+    return recipe
+```
+
+## Step 3 - In the main section of your code, ask the user how many recipes they would like to enter. Their response will be linked to a variable n
+
+```n = int(input("How many recipes would you like to enter? "))```
+
+## Step 4 - Run a for loop, which runs n times to perform the following steps:
+
+- Run take_recipe() and store its return output (a dictionary) in a variable called recipe.
+- Run another for loop inside this loop, which iterates through recipe’s ingredients list, where it picks out elements one-by-one as ingredient. It will run the following step inside: if the chosen ingredient isn’t present in ingredients_list, add it to this list. To check if an element ele is present in a sequence seq, you can use the in keyword in a conditional statement as follows: if ele in seq:. Either True or False is returned (remember that you’re checking if ingredient is not in the list, so use the not operator accordingly).
+- Once you’ve finished adding ingredients, append recipe to recipes_list.
+
+```
+for i in range(0,n):
+    print("Recipe", i+1)
+    recipe = take_recipe()
+
+    for ingredient in recipe["ingredients"]:
+        if not ingredient in ingredients_list:
+            ingredients_list.append(ingredient)
+
+    recipes_list.append(recipe)
+```
+
+## Step 5 - Run another for loop that iterates through recipes_list, picks out each element (a dictionary) as recipe, and performs the following steps:
+
+1. Determine the difficulty of the recipe using the following logic:
+    - If cooking_time is less than 10 minutes, and the number of ingredients is less than 4, set a variable called difficulty to the value of Easy.
+    - If cooking_time is less than 10 minutes, and the number of ingredients is greater than or equal to 4, set a variable called difficulty to the value of Medium.
+    - If cooking_time is greater than or equal to 10 minutes, and the number of ingredients is less than 4, set a variable called difficulty to the value of Intermediate.
+    - If cooking_time is greater than or equal to 10 minutes, and the number of ingredients is greater than or equal to 4, set a variable called difficulty to the value of Hard.
+  
+2. Display the recipe in the following format, using values from each dictionary (recipe) obtained from recipes_list:
+    ![recipe format](https://images.careerfoundry.com/public/courses/python/A1/1.3/recipe_list-format-code.png)
+
+```
+for recipe in recipes_list:
+    difficulty = "Easy" if recipe["cooking_time"] < 10 and len(recipe["ingredients"]) < 4 else "Medium" if recipe["cooking_time"] < 10 and len(recipe["ingredients"]) >= 4 else "Intermediate" if recipe["cooking_time"] >= 10 and len(recipe["ingredients"]) < 4 else "Hard"
+
+    print("\nRecipe: " + recipe["name"] + "\nCooking Time (min): " + str(recipe["cooking_time"]) + "\nIngredients:")
+    for ingredient in recipe["ingredients"]:
+        print(ingredient)
+    print("Difficulty level:", difficulty)
+```
+
+## Step 6 - Next, you’ll have to display all the ingredients that you’ve come across so far in all of the recipes that you’ve just entered. In Step 5 you appended these ingredients into ingredient_list. Now it’s time to print them all out. Print them in alphabetical order, in a format similar to this example:
+
+![ingredient list format](https://images.careerfoundry.com/public/courses/python/A1/1.3/ingredient_list-example-output.png)
+
+```
+print("\nIngredients Available Across All Recipes\n-----------------------------------")
+for ingredient in sorted(ingredients_list):
+    print(ingredient)
+```
