@@ -373,3 +373,226 @@ except:
 else:
     search_ingredient(data)
 ```
+
+# Exercise 1.5
+
+## Step 1 - Define a class Recipe, with the following data attributes:
+
+- name: the name of a recipe
+- ingredients: a list containing the ingredients for a recipe
+- cooking_time: the time taken in minutes to carry out a recipe
+- difficulty: an auto-generated attribute that says whether the recipe is Easy, Medium, Intermediate, or Hard
+
+```
+class Recipe:
+    # Class variable to store all ingredients across all recipes
+    all_ingredients = set()
+
+    def __init__(self, name):
+        # adding an underscore _ before each variable name to indicate that the variable is intended for internal use within the class.
+        self._name = name
+        self._ingredients = []
+        self._cooking_time = None
+        self._difficulty = None
+```
+
+## Step 2 - Define the following procedural attributes (methods) for the class as well:
+
+- An initialization method that takes in the name for the recipe and initializes the other data attributes too. Getter and setter methods for name and cooking_time.
+- A method called add_ingredients that takes in variable-length arguments for the recipe’s ingredients. For example, the arguments could be either ("Salt") or even ("Salt", "Pepper", "Flour", "Water", "Bananas", "Marzipan"); your method should take in these ingredients and add them to ingredients. Once all the ingredients are added, this function calls update_all_ingredients() , which you’ll define shortly.
+- A getter method for ingredients that returns the list itself.
+- A method called calculate_difficulty() that uses the logic in part 1 of this task, and updates the difficulty of the recipe.
+- A getter method for difficulty which also calls calculate_difficulty() if difficulty hasn’t been calculated.
+- A search method called search_ingredient() that takes an ingredient as an argument, searches for it in the recipe, and returns True or False appropriately.
+- A method called update_all_ingredients() that goes through the current object’s ingredients and adds them to a class variable called all_ingredients, if they’re not already present. This class variable keeps track of all the ingredients that exist across all recipes.
+- A string representation that prints the entire recipe over a well formatted string.
+
+```
+@property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+    @property
+    def cooking_time(self):
+        return self._cooking_time
+
+    @cooking_time.setter
+    def cooking_time(self, value):
+        self._cooking_time = value
+
+    # the asterisk before ingredients indicates that the function can accept any number of positional arguments, which will be collected into a tuple.
+    def add_ingredients(self, *ingredients):
+
+        # the .extend() method is used to extend an existing list by appending elements from another iterable object, (in this case the ingredients tuple), 
+        # such as a list, tuple, set, or any other iterable.
+        self._ingredients.extend(ingredients)
+        self.update_all_ingredients()
+
+    @property
+    def ingredients(self):
+        return self._ingredients
+
+    def calculate_difficulty(self):
+        if self._cooking_time is None or self._ingredients is None:
+            return
+        if self._cooking_time < 10 and len(self._ingredients) < 4:
+            self._difficulty = "Easy"
+        elif self._cooking_time < 10 and len(self._ingredients) >= 4:
+            self._difficulty = "Medium"
+        elif self._cooking_time >= 10 and len(self._ingredients) < 4:
+            self._difficulty = "Intermediate"
+        else:
+            self._difficulty = "Hard"
+
+    @property
+    def difficulty(self):
+        # using the keyword "is" tests if two variables point to the same object instead of if they just have the same value
+        # for example it would return false for these two lists: a = [1,2,3]; b = [1,2,3] as they point to different objects in memory
+        if self._difficulty is None:
+            self.calculate_difficulty()
+        return self._difficulty
+
+    def search_ingredient(self, ingredient):
+        return ingredient in self._ingredients
+
+    def update_all_ingredients(self):
+        # The .update() method is primarily used to update the contents of a dictionary or set with the elements from another iterable object,
+        # such as another dictionary, a list, or a set.
+        #
+        # In the case of sets like the Recipe class' shared "all_ingredients" set, the .update() method
+        # adds elements from another iterable (self._ingredients) to the set.
+        # If the elements (ingredients in this case) already exist in the set, they are ignored.
+        Recipe.all_ingredients.update(self._ingredients)
+
+    def __str__(self):
+        # using f-strings, or formatted string literals for interpolation and easier formatting
+        return f"{self._name}:\nIngredients: {', '.join(self._ingredients)}\nCooking time: {self._cooking_time} minutes\n"
+```
+
+## Step 3 - To find recipes that contain a specific ingredient, define a method called recipe_search():
+
+1. Define 2 parameters for this method:
+    - data: takes in a list of Recipe objects to search from
+    - search_term: the ingredient to be searched for
+1. Run a for loop that traverses through data, and performs the following steps:
+    - Within the object that is in focus, call the search_ingredient method to see if the ingredient is present or not.
+    - If the above condition is satisfied, print the recipe.
+
+```
+# Method used to find recipes that contain a specific ingredient
+def recipe_search(data, search_term):
+    for recipe in data:
+        if recipe.search_ingredient(search_term):
+            print(recipe)
+```
+
+## Step 4 - In the main code, make an object under the Recipe class:
+
+- Initialize an object named tea under this class, and set the recipe’s name as "Tea" through the initialization step.
+- Add the following ingredients to this recipe: Tea Leaves, Sugar, Water.
+- Set the cooking time for this recipe as 5 (in minutes).
+- Display the string representation of this object.
+ 
+```
+# Creating recipe objects
+tea = Recipe("Tea")
+tea.add_ingredients("Tea Leaves", "Sugar", "Water")
+tea.cooking_time = 5
+```
+
+## Step 5 - Make a few more recipes with the given attributes, and display their respective string representations as well:
+
+1. Coffee:
+    - Ingredients: Coffee Powder, Sugar, Water
+    - Cooking time: 5 minutes
+2. Cake:
+    - Ingredients: Sugar, Butter, Eggs, Vanilla Essence, Flour, Baking Powder, Milk
+    - Cooking time: 50 minutes
+3. Banana Smoothie:
+    - Ingredients: Bananas, Milk, Peanut Butter, Sugar, Ice Cubes
+    - Cooking time: 5 minutes
+
+```
+coffee = Recipe("Coffee")
+coffee.add_ingredients("Coffee Powder", "Sugar", "Water")
+coffee.cooking_time = 5
+
+cake = Recipe("Cake")
+cake.add_ingredients("Sugar", "Butter", "Eggs",
+                     "Vanilla Essence", "Flour", "Baking Powder", "Milk")
+cake.cooking_time = 50
+
+banana_smoothie = Recipe("Banana Smoothie")
+banana_smoothie.add_ingredients(
+    "Bananas", "Milk", "Peanut Butter", "Sugar", "Ice Cubes")
+banana_smoothie.cooking_time = 5
+
+# Displaying string representations
+print("String representations of a recipe:\n" + 30*"-")
+print(tea)
+print(coffee)
+print(cake)
+print(banana_smoothie)
+print(30*"-")
+```
+
+## Step 6 - Wrap the recipes into a list called recipes_list.
+
+```
+# Creating a list of recipes
+recipes_list = [tea, coffee, cake, banana_smoothie]
+```
+
+## Step 7 - Use the recipe_search() method to search for recipes that contain each ingredient out of: Water, Sugar, Bananas.
+
+```
+# Using recipe_search method to search for recipes containing specific ingredients
+ingredients_to_search = ["Water", "Sugar", "Bananas"]
+for ingredient in ingredients_to_search:
+    print(f"Recipes containing {ingredient}:")
+    recipe_search(recipes_list, ingredient)
+    # print newline character at the end for better formatting
+    print()
+```
+
+## Final output:
+
+```
+String representations of a recipe:
+------------------------------
+Tea:
+Ingredients: Tea Leaves, Sugar, Water
+Cooking time: 5 minutes
+
+------------------------------
+Recipes containing Water:
+Tea:
+Ingredients: Tea Leaves, Sugar, Water
+Cooking time: 5 minutes
+
+Coffee:
+Ingredients: Coffee Powder, Sugar, Water
+Cooking time: 5 minutes
+
+
+Recipes containing Sugar:
+Tea:
+Ingredients: Tea Leaves, Sugar, Water
+Cooking time: 5 minutes
+
+Coffee:
+Ingredients: Coffee Powder, Sugar, Water
+Cooking time: 5 minutes
+
+Cake:
+Ingredients: Sugar, Butter, Eggs, Vanilla Essence, Flour, Baking Powder, Milk
+
+Recipes containing Bananas:
+Banana Smoothie:
+Ingredients: Bananas, Milk, Peanut Butter, Sugar, Ice Cubes
+Cooking time: 5 minutes
+```
