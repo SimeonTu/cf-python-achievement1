@@ -596,3 +596,344 @@ Banana Smoothie:
 Ingredients: Bananas, Milk, Peanut Butter, Sugar, Ice Cubes
 Cooking time: 5 minutes
 ```
+
+# Exercise 1.6
+
+## Part 1: Create & Connect Database
+
+Before you visualize anything to the user, you should connect your “recipe_mysql.py” script to your MySQL server:
+
+1. First, import the mysql.connector module.
+
+```import mysql.connector```
+
+2. Next, initialize a connection object called conn, which connects with the following parameters, based on the user that you set up earlier:
+
+    - Hostname is localhost
+    - Username is cf-python
+    - Password is password
+
+```
+def connect_to_database():
+    # Connect to MySQL server
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="cf-python",
+        password="password"
+    )
+```
+
+3. Next, initialize a cursor object from conn.
+
+```
+    # Create a cursor object
+    cursor = conn.cursor()
+```
+
+4. Create a database called task_database. To ensure you don’t get errors from accidentally using multiple databases with the same name, make sure it’s the only database with this name on the server by using the EXISTS statement: CREATE DATABASE IF NOT EXISTS <database name>
+
+```
+    # Create task_database if not exists
+    cursor.execute("CREATE DATABASE IF NOT EXISTS task_database")
+```
+
+5. Have your script access your database with the USE statement.
+
+```
+    # Use task_database
+    cursor.execute("USE task_database")
+```
+
+6. Create a table called Recipes with the following columns:
+    - id: integer type; increments automatically; the primary key for this table.
+    - name: string type; character limit of 50; stores the name of the recipe.
+    - ingredients: string type; character limit of 255; stores the ingredients of the recipe in the form of a string.
+    - cooking_time: integer type; stores the cooking time in minutes.
+    - difficulty: string type; character limit of 20; stores the difficulty level as Easy, Medium, Intermediate, or Hard.
+
+As you did with the database, use the EXISTS statement to make sure there isn’t already a table with the same name: CREATE TABLE IF NOT EXISTS <table name>
+
+```
+    # Create Recipes table if not exists
+    cursor.execute("CREATE TABLE IF NOT EXISTS Recipes (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50), ingredients VARCHAR(255), cooking_time INT, difficulty VARCHAR(20))")
+
+    return conn, cursor
+```
+
+## Part 2: The Main Menu
+
+To implement a main menu, let’s first understand how the user would flow through it:
+
+- First, the user gets to choose from four options: adding recipes, searching for recipes, modifying recipes, and deleting recipes. Once the user selects an option, it should be launched through its own function call. When the function is over, the user needs to be taken back to the main menu so they can perform other operations.
+- The process of user selection, function calling, and returning to the main menu requires a loop so that after the process has been completed once it can loop and happen again. A while loop would be perfect for this, because in this case you don’t know exactly how many times the loop will run.
+- The condition for running the loop can be based on the user’s choice between the 4 options (adding recipes, searching for recipes, etc.). However, if the user were to enter a designated choice to exit the program, the loop would stop.
+
+Therefore, your main_menu() function requires the following options:
+
+1. Creating a new recipe: Calls a function called create_recipe() which accepts conn and cursor as its arguments.
+2. Searching for a recipe by ingredient: Calls a function called search_recipe() which accepts conn and cursor as its arguments.
+3. Updating an existing recipe: Calls a function called update_recipe() which accepts conn and cursor as its arguments.
+4. Deleting a recipe: Calls a function called delete_recipe() which accepts conn and cursor as its arguments.
+
+If the user exits this loop, any changes to the database would be committed and the connection created would be closed.
+
+Once you've defined the main_menu() function, call it in the main code. Pass conn and cursor as arguments so that the code inside the main_menu() function can use the database.
+
+```
+def main_menu(conn, cursor):
+    while True:
+        print("\nMain Menu:")
+        print("1. Create a Recipe")
+        print("2. Search for a Recipe")
+        print("3. Update a Recipe")
+        print("4. Delete a Recipe")
+        print("5. Exit")
+
+        choice = input("\nEnter your choice: ")
+
+        if choice == '1':
+            create_recipe(conn, cursor)
+        elif choice == '2':
+            search_recipe(conn, cursor)
+        elif choice == '3':
+            update_recipe(conn, cursor)
+        elif choice == '4':
+            delete_recipe(conn, cursor)
+        elif choice == '5':
+            print("Exiting...")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+    conn.close()
+
+
+if __name__ == "__main__":
+    conn, cursor = connect_to_database()
+    main_menu(conn, cursor)
+```
+
+## Part 3: Creating a Recipe with create_recipe()
+
+1. First, collect the following details for a recipe entry:
+    - name: Name of the recipe, string type.
+    - cooking_time: Cooking time of the recipe in minutes, integer type.
+    - ingredients: Ingredients of the recipe, each ingredient stored as a string in this list.
+
+```
+    name = input("Enter recipe name: ")
+    cooking_time = int(input("Enter cooking time (minutes): "))
+    ingredients = input(
+        "Enter ingredients (comma-separated, ex: water,sugar): ").split(',')
+```
+
+2. Next, call a function called calculate_difficulty(). It calculates the difficulty of the recipe by taking in cooking_time and ingredients as its arguments, and returning one of the following strings: Easy, Medium, Intermediate, or Hard. Store the output in a variable called difficulty.
+
+```
+    difficulty = calculate_difficulty(cooking_time, ingredients)
+
+# outside of create_recipe()
+def calculate_difficulty(cooking_time, ingredients):
+    if cooking_time < 10 and len(ingredients) < 4:
+        return "Easy"
+    elif cooking_time < 10 and len(ingredients) >= 4:
+        return "Medium"
+    elif cooking_time >= 10 and len(ingredients) < 4:
+        return "Intermediate"
+    else:
+        return "Hard"
+```
+
+3. Now, you have to prepare to wrap this information up in an SQL query so that you can enter it into the Recipes table on your database. Since MySQL doesn’t fully support arrays, your ingredients list needs to be converted into a comma-separated string. This can be done through the join() method, which is used with the syntax: <returned_string> = "<separator characters>".join(<sequence from which items are to be joined>). Here, you need to join the elements of the list ingredients, the separator being a comma followed by a space (", "). Finally, build the query string in the following format: INSERT INTO Recipes (name, ingredients, cooking_time, difficulty) VALUES (<respective values for each column>).
+
+```
+    ingredients_string = ", ".join(ingredients)
+
+    query = "INSERT INTO Recipes (name, ingredients, cooking_time, difficulty) VALUES (%s, %s, %s, %s)"
+```
+
+4. Execute the query, then commit your changes.
+
+```
+    cursor.execute(query, (name, ingredients_string, cooking_time, difficulty))
+    conn.commit()
+    print("Recipe created successfully!")
+```
+
+## Part 4: Searching for a Recipe with search_recipe()
+
+1. You need to begin with an entire list of ingredients that is available in the Recipes table for the user to choose from. Obtain this list by SELECT-ing only the ingredients column from your table. Store the output into a variable called results.
+
+```
+    cursor.execute("SELECT ingredients FROM Recipes")
+    results = cursor.fetchall()
+```
+
+2. results is made up of a list of rows, each row being a tuple containing column values. Since you’re only retrieving the ingredients column, each row contains a single-element tuple, the element being a string containing the ingredients for each recipe. Add each ingredient that you come across into a new list called all_ingredients, and make sure that there are no duplicates.
+
+```
+    all_ingredients = set()
+    for result in results:
+        ingredients = result[0].split(',')
+        all_ingredients.update(ingredients)
+```
+
+3. Display all the ingredients that you’ve found so far to the user, and allow them to pick a number corresponding to the ingredient in order to begin a search. Store the ingredient to be searched for into a variable called search_ingredient.
+
+```
+    print("Available ingredients:")
+    for index, ingredient in enumerate(all_ingredients, 1):
+        print(f"{index}. {ingredient}")
+
+    search_index = int(
+        input("\nEnter the number corresponding to the ingredient you want to search: "))
+    search_ingredient = list(all_ingredients)[search_index - 1]
+```
+
+4. To search for rows in the table that contain search_ingredient within the ingredients column, use the WHERE statement with the LIKE operator: ```SELECT <columns to be displayed> FROM <table> WHERE <search column> LIKE <search pattern>```.
+
+In your case, an ingredient that you search for can either be in the middle, at the beginning, or at the end of the ingredients string. SQL Server supports the wildcard %, which represents zero or more characters in its position. Hence, if you’re searching for beans within a string, your search pattern should be %beans%.
+
+
+```
+    query = "SELECT * FROM Recipes WHERE ingredients LIKE %s"
+    cursor.execute(query, ('%' + search_ingredient + '%',))
+```
+
+5. Use this logic to build your query, fetch the results that satisfy this condition, and display them to the user.
+
+```
+    search_results = cursor.fetchall()
+
+    print("Search Results:")
+    print(30*"-")
+    for recipe in search_results:
+        print("ID:", recipe[0])
+        print("Name:", recipe[1])
+        print("Ingredients:", recipe[2])
+        print("Cooking time:", recipe[3], "minutes")
+        print("Difficulty:", recipe[4])
+        print()
+    print(30*"-")
+```
+
+## Part 5: Updating a Recipe with update_recipe()
+
+1. In this function, you’ll first fetch all the recipes that are present on the database and list them to the user. The user will then pick a recipe to be updated by specifying its corresponding id, after which the script will ask for the column to be updated for that recipe. The columns available for modification are name, cooking_time and ingredients.
+
+```
+    cursor.execute("SELECT * FROM Recipes")
+    recipes = cursor.fetchall()
+
+    print("Available recipes:")
+    print(30*"-")
+    for recipe in recipes:
+        print("ID:", recipe[0])
+        print("Name:", recipe[1])
+        print("Ingredients:", recipe[2])
+        print("Cooking time:", recipe[3], "minutes")
+        print("Difficulty:", recipe[4])
+        print()
+    print(30*"-")
+```
+
+2. Once the user selects the column that needs an update, collect the new value from the user.
+
+```
+    recipe_id = int(input("Enter the ID of the recipe you want to update: "))
+    column_name = input(
+        "Enter the column to update (name, cooking_time, ingredients): ")
+    new_value = input(
+        "Enter the new value (ex: text for name, number for cooking_time, and text separated by commas for ingredients): ")
+```
+
+3. Build your query in the form of a string, to update an entry on the table for the given id, column, and updated value. Note that if the user is updating either cooking_time or ingredients, the script will have to recalculate the difficulty of the recipe, then update that column as well (make a separate query for this), then execute your queries on the table and commit your changes.
+
+```
+    if column_name == 'cooking_time':
+        # Fetch the current list of ingredients from the database
+        cursor.execute(
+            "SELECT ingredients FROM Recipes WHERE id = %s", (recipe_id,))
+        current_ingredients = cursor.fetchone()[0].split(',')
+
+        # Recalculate difficulty using the new cooking time and current ingredients
+        new_difficulty = calculate_difficulty(new_value, current_ingredients)
+    else:
+        # Fetch the current cooking time from the database
+        cursor.execute(
+            "SELECT cooking_time FROM Recipes WHERE id = %s", (recipe_id,))
+        current_cooking_time = cursor.fetchone()[0]
+
+        # Recalculate difficulty using the current cooking time and new ingredients
+        new_difficulty = calculate_difficulty(current_cooking_time, new_value)
+
+    # Update the difficulty in the database
+    cursor.execute("UPDATE Recipes SET difficulty = %s WHERE id = %s",
+                   (new_difficulty, recipe_id))
+
+    query = f"UPDATE Recipes SET {column_name} = %s WHERE id = %s"
+    cursor.execute(query, (new_value, recipe_id))
+
+    conn.commit()
+    print("Recipe updated successfully!")
+```
+
+## Part 6: Deleting a Recipe with delete_recipe()
+
+1. This function will display every recipe in your table to the user, where they can pick one by its id for deletion.
+
+```
+def delete_recipe(conn, cursor):
+    cursor.execute("SELECT * FROM Recipes")
+    recipes = cursor.fetchall()
+
+    print("Available recipes:")
+    print(30*"-")
+    for recipe in recipes:
+        print("ID:", recipe[0])
+        print("Name:", recipe[1])
+        print("Ingredients:", recipe[2])
+        print("Cooking time:", recipe[3], "minutes")
+        print("Difficulty:", recipe[4])
+        print()
+    print(30*"-")
+
+    recipe_id = int(input("Enter the ID of the recipe you want to delete: "))
+```
+
+2. Build a query using the DELETE statement, where the row to be deleted is identified by the id that the user had specified, the execute this query and commit your changes to the table.
+
+```
+    query = "DELETE FROM Recipes WHERE id = %s"
+    cursor.execute(query, (recipe_id,))
+
+    conn.commit()
+    print("Recipe deleted successfully!")
+```
+
+## Part 7: Screenshots of finished program
+
+1. Save your Python script and ensure that your MySQL server is running on your system. Then, run your script.
+
+2. Create about 3 to 4 simple recipes of your choice using the first option in your menu: Create a Recipe.
+
+![step1](exercise-1.6/step1.png)
+
+3. Run a search by selecting the ingredient to search for, this time using the second option in your script: Search for a Recipe.
+
+![step2](exercise-1.6/step2.png)
+
+4. Change a few values in some of your recipes using the third option in your script’s menu: Update a Recipe. 2 or 3 updates should be enough.
+
+![step3](exercise-1.6/step3.png)
+
+5. Delete any one of your recipes using the final option: Delete a Recipe.
+
+![step4](exercise-1.6/step4.png)
+
+6. Exit the script using the exit keyword that you defined before (e.g. quit).
+
+![step5](exercise-1.6/step5.png)
+
+
+
