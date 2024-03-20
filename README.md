@@ -936,4 +936,432 @@ def delete_recipe(conn, cursor):
 ![step5](exercise-1.6/step5.png)
 
 
+# Exercise 1.7
 
+## Part 1: Set Up Your Script & SQLAlchemy
+
+1.	Open a script file called recipe_app.py.
+2.	As you saw earlier, your application requires a number of packages and functions for each part to operate, such as model definitions and session creation. Make sure you import all the packages and methods necessary to build your application.
+3.	Set up SQLAlchemy if you haven’t already. Make sure that your MySQL server is up and running. Take note of your username, password, hostname, and database name.
+4.	Use the credentials and details above to create an engine object called engine that connects to your desired database. (Note: You can use the database task_database that you created in the previous Exercise.)
+5.	Make the session object that you’ll use to make changes to your database. To do this, generate the Session class, bind it to the engine, and initialize the session object.
+
+```
+import sqlalchemy
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+# MySQL database credentials
+username = "cf-python"
+password = "password"
+hostname = "localhost"
+database_name = "task_database"
+
+# Connect to the MySQL database
+engine = create_engine(
+    f"mysql://{username}:{password}@{hostname}/{database_name}")
+Base = declarative_base()
+Session = sessionmaker(bind=engine)
+session = Session()
+```
+
+## Part 2: Create Your Model and Table
+
+1.	The Recipe class should inherit the Base class that you created earlier.
+2.	Define an attribute to set the table’s name as final_recipes.
+3.	Define these attributes to create columns in your table:
+    - id: integer; primary key; increments itself automatically.
+    - name: string with 50-character limit; stores the recipe’s name.
+    - ingredients: string type; character limit of 255; stores the ingredients of the recipe in the form of a string.
+    - cooking_time: integer; stores the recipe’s cooking time in minutes
+    - difficulty: string with 20-character limit; stores one of four strings that describe the difficulty of the recipe (Easy, Medium, Intermediate, and Hard).
+4.	Define a __repr__ method that shows a quick representation of the recipe, including the id, name, and difficulty.
+5.	Define a __str__ method that prints a well-formatted version of the recipe. Get creative with your print statements!
+
+```
+class Recipe(Base):
+    __tablename__ = 'final_recipes'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50))
+    ingredients = Column(String(255))
+    cooking_time = Column(Integer)
+    difficulty = Column(String(20))
+
+    def __repr__(self):
+        return f"<Recipe(id={self.id}, name='{self.name}', difficulty='{self.difficulty}')>"
+
+    def __str__(self):
+        return f"Recipe ID: {self.id}\nName: {self.name}\nIngredients: {self.ingredients}\nCooking Time: {self.cooking_time} minutes\nDifficulty: {self.difficulty}\n"
+```
+
+6.	Define a method called calculate_difficulty() to calculate the difficulty of a recipe based on the number of ingredients and cooking time.
+7.	Define a method that retrieves the ingredients string inside your Recipe object as a list, called return_ingredients_as_list().
+
+```
+    def calculate_difficulty(self):
+        ingredient_count = len(self.return_ingredients_as_list())
+
+        if self.cooking_time < 10 and ingredient_count < 4:
+            difficulty_level = "Easy"
+        elif self.cooking_time < 10 and ingredient_count >= 4:
+            difficulty_level = "Medium"
+        elif self.cooking_time >= 10 and ingredient_count < 4:
+            difficulty_level = "Intermediate"
+        else:
+            difficulty_level = "Hard"
+            
+        self.difficulty = difficulty_level
+
+    def return_ingredients_as_list(self):
+        if not self.ingredients:
+            return []
+        else:
+            return self.ingredients.split(', ')
+```
+
+1. Once you’re done defining your model, create the corresponding table on the database using the create_all() method from Base.metadata.
+
+```
+# Create the table
+Base.metadata.create_all(engine)
+```
+
+## Part 3: Define your Main Operations as Functions
+
+Before you create the main menu, you need to establish the functions that get executed when an option on the main menu is picked. Let’s go through the five functions, one by one.
+
+### Function 1: create_recipe()
+
+1. Collect the details of the recipe (name, ingredients, cooking_time) from the user.
+2. Ensure all the inputs are appropriate (e.g., name doesn’t extend past 50 characters, or cooking_time isn’t a letter of the alphabet). Use the following methods to perform these checks for a given string called line:
+    - len() - use len(line) to get the length of line as an integer.
+    - isalnum() - line.isalnum() gives you True or False based on whether line contains alphanumeric characters.
+    - isnumeric() - line.isnumeric() returns True or False based on whether line contains only numbers.
+    - isalpha() - line.isalpha() returns True or False based on whether line contains only alphabetical characters.
+
+3. Collect the ingredients from the user in the following manner:
+    - Define a temporary empty list called ingredients.
+    - Ask the user how many ingredients they’d like to enter.
+    - Based on this number, run a for loop that collects each ingredient and then adds it to your temporary list, ingredients.
+
+4. Convert the list ingredients into a string using the join() method, where each ingredient is joined to the other with a comma followed by a space (,).
+
+5. Create a new object from the Recipe model called recipe_entry using the details above.
+6. Generate the difficulty attribute for this recipe by calling its calculate_difficulty() method.
+7. Add this to your database through the session object, and commit this change.
+
+```
+def create_recipe():
+    # Get recipe name with input error checking
+    while True:
+        name = input("Enter recipe name: ")
+        if len(name) > 50:
+            print("Recipe name must not exceed 50 characters.")
+        else:
+            break
+
+    # Get number of ingredients
+    while True:
+        try:
+            ingredients_count = int(input("Enter the number of ingredients: "))
+            break
+        except ValueError:
+            print("Please enter a valid number for the ingredients count.")
+
+    # Get ingredients with input error checking
+    ingredients = []
+    for i in range(ingredients_count):
+        while True:
+            ingredient = input(f"Enter new ingredient {i+1}: ")
+            ingredients.append(ingredient)
+            if len(", ".join(ingredients)) > 255:
+                print("Ingredient list must not exceed 255 characters. Current character count: " + str(len(", ".join(ingredients))))
+                ingredients.pop()
+            else:
+                break
+
+    ingredients_str = ', '.join(ingredients)
+
+    # Get cooking time with input error checking
+    while True:
+        try:
+            cooking_time = int(input("Enter cooking time (in minutes): "))
+            break
+        except ValueError:
+            print("Cooking time must be a valid integer.")
+
+    recipe_entry = Recipe(name=name, ingredients=ingredients_str, cooking_time=cooking_time)
+    recipe_entry.calculate_difficulty()
+    session.add(recipe_entry)
+    session.commit()
+```
+
+### Function 2: view_all_recipes()
+
+1. Retrieve all recipes from the database as a list.
+2. If there aren’t any entries, inform the user that there aren’t any entries in your database, and exit the function to return to the main menu. (Tip: to exit the function, simply use the return None statement.)
+3. Loop through this list of recipes, and call each of their __str__ methods to display each recipe.
+
+```
+def view_all_recipes():
+    recipes = session.query(Recipe).all()
+    if not recipes:
+        print("No recipes found.")
+        return
+    for recipe in recipes:
+        print(recipe)
+```
+
+### Function 3: search_by_ingredients()
+
+1.	Check if your table has any entries. Use the count() method like below to get the number of entries in the given table: session.query(<model name>).count(). If there aren’t any entries, notify the user, and exit the function.
+2.	Retrieve only the values from the ingredients column of your table, and store this into a variable called results.
+3.	Initialize an empty list called all_ingredients.
+4.	Go through each entry in results, split up the ingredients into a temporary list, and add each ingredient from this list to all_ingredients. Check each ingredient isn’t already on the list before adding.
+5.	Display these ingredients to the user, where each ingredient has a number displayed next to it. Ask them by which ingredients they’d like to search for recipes.
+6.	The user is allowed to pick these ingredients by typing the numbers corresponding to the ingredients, separated by spaces.
+7.	Check that the user’s inputs match the options available. Otherwise, inform the user and exit the function.
+8.	Based on the user’s selection as numbers, make a list of ingredients to be searched for, called search_ingredients, which contains these ingredients as strings.
+9.	Initialize an empty list called conditions. This list will contain like() conditions for every ingredient to be searched for.
+10.	Run a loop that runs through search_ingredients, and performs the following steps:
+    - Make a search string called like_term, which is essentially the ingredient, surrounded by a “%” on either side (e.g., “%Milk%”).
+    - Append the search condition containing like_term to the conditions list (e.g., <Model name>.<column to search in>.like(like_term)).
+11.	Retrieve all recipes from the database using the filter() query, containing the list conditions. Display these recipes using the __str__ method.
+
+```
+def search_by_ingredients():
+    recipes = session.query(Recipe).all()
+    if not recipes:
+        print("No recipes found.")
+        return
+
+    all_ingredients = []
+    for recipe in recipes:
+        ingredients_list = recipe.return_ingredients_as_list()
+        all_ingredients.extend(ingredients_list)
+
+    unique_ingredients = list(set(all_ingredients))
+
+    print("Available ingredients:")
+    for i, ingredient in enumerate(unique_ingredients, 1):
+        print(f"{i}. {ingredient}")
+
+    while True:
+        user_input = input("Enter ingredient numbers separated by spaces: ")
+        input_numbers = user_input.split()
+
+        # Check if all input values are valid numbers within the available options
+        if all(number.isdigit() and 1 <= int(number) <= len(unique_ingredients) for number in input_numbers):
+            search_ingredients = [unique_ingredients[int(i)-1] for i in input_numbers]
+            break
+        else:
+            print("Invalid input. Please enter valid ingredient numbers.")
+
+    conditions = []
+    for ingredient in search_ingredients:
+        like_term = f"%{ingredient}%"
+        conditions.append(Recipe.ingredients.like(like_term))
+
+    filtered_recipes = session.query(Recipe).filter(*conditions).all()
+    for recipe in filtered_recipes:
+        print(recipe)
+```
+
+### Function 4: edit_recipe()
+
+1.	Check if any recipes exist on your database, and continue only if there are any. Otherwise, exit this function.
+2.	Retrieve the id and name for each recipe from the database, and store them into results.
+3.	From each item in results, display the recipes available to the user.
+4.	The user gets to pick a recipe by its id. If the chosen id doesn’t exist, exit the function.
+5.	Retrieve the entire recipe that corresponds to this id from the database into a variable called recipe_to_edit.
+6.	Display the recipe, including only name, ingredients and cooking_time. difficulty isn’t editable since it is a calculated value. Display a number next to each attribute so that the user gets to pick one.
+7.	Ask the user which attribute they’d like to edit by entering the corresponding number. Remember to check the user’s input here.
+8.	Based on the input, use if-else statements to edit the respective attribute inside the recipe_to_edit object. Recalculate the difficulty using the object’s calculate_difficulty() method.
+9.	Commit these changes to the database.
+
+def edit_recipe():
+    recipes = session.query(Recipe).all()
+    if not recipes:
+        print("No recipes found.")
+        return
+
+    print("Available recipes:")
+    for recipe in recipes:
+        print(f"{recipe.id}. {recipe.name}")
+
+    recipe_id = int(input("Enter the ID of the recipe you want to edit: "))
+    recipe_to_edit = session.query(Recipe).filter_by(id=recipe_id).first()
+    if not recipe_to_edit:
+        print("Invalid recipe ID.")
+        return
+
+    # print(recipe_to_edit)
+    print("Which attribute would you like to edit?")
+    print(f"1. Name - {recipe_to_edit.name}")
+    print(f"2. Ingredients - {recipe_to_edit.ingredients}")
+    print(f"3. Cooking Time - {recipe_to_edit.cooking_time}")
+    attribute_choice = input("Enter your choice: ")
+
+    # Editing name
+    if attribute_choice == "1":
+        while True:
+            new_name = input("Enter the new name: ")
+            if len(new_name) > 50:
+                print("Recipe name must not exceed 50 characters.")
+            else:
+                break
+
+    # Editing ingredients
+    elif attribute_choice == "2":
+    # Get number of ingredients
+        while True:
+            try:
+                new_ingredients_count = int(input("Enter the number of new ingredients: "))
+                break
+            except ValueError:
+                print("Please enter a valid number for the ingredients count.")
+
+        # Get ingredients with input error checking
+        new_ingredients = []
+        for i in range(new_ingredients_count):
+            while True:
+                ingredient = input(f"Enter new ingredient {i+1}: ")
+                new_ingredients.append(ingredient)
+                if len(", ".join(new_ingredients)) > 255:
+                    print("Ingredient list must not exceed 255 characters. Current character count: " + str(len(", ".join(new_ingredients))))
+                    new_ingredients.pop()
+                else:
+                    break
+
+        new_ingredients_str = ', '.join(new_ingredients)
+        recipe_to_edit.ingredients = new_ingredients_str
+
+    # Editing cooking time
+    elif attribute_choice == "3":
+    # Get cooking time with input error checking
+        while True:
+            try:
+                new_cooking_time = int(input("Enter the new cooking time (in minutes): "))
+                break
+            except ValueError:
+                print("Cooking time must be a valid integer.")
+
+        recipe_to_edit.cooking_time = new_cooking_time
+
+    else:
+        print("Invalid choice.")
+        return
+
+    recipe_to_edit.calculate_difficulty()
+    session.commit()
+
+### Function 5: delete_recipe()
+
+1.	Check if any recipes exist on our database, and continue only if there are any. Otherwise, exit this function.
+2.	Retrieve the id and name of every recipe in the database. List these out to the user to choose from.
+3.	Ask the user which recipe they’d like to delete by entering the corresponding id. Verify inputs here.
+4.	Based on the selected id, retrieve the corresponding object that exists on the database.
+5.	Ask the user if they’re sure that they’d like to delete this entry. If it’s a ‘yes’, perform the delete operation and commit this change. Otherwise, exit the function.
+
+```
+def delete_recipe():
+    recipes = session.query(Recipe).all()
+    if not recipes:
+        print("No recipes found.")
+        return
+
+    print("Available recipes:")
+    for recipe in recipes:
+        print(f"{recipe.id}. {recipe.name}")
+
+    recipe_id = int(input("Enter the ID of the recipe you want to delete: "))
+    recipe_to_delete = session.query(Recipe).filter_by(id=recipe_id).first()
+    if not recipe_to_delete:
+        print("Invalid recipe ID.")
+        return
+
+    while True:
+        confirmation = input(
+            f"Are you sure you want to delete '{recipe_to_delete.name}'? (yes/no): ")
+        if confirmation.lower() == 'yes':
+            session.delete(recipe_to_delete)
+            session.commit()
+            print("Recipe deleted successfully.")
+            break
+        elif confirmation.lower() == 'no':
+            print("Deletion canceled.")
+            break
+        else:
+            print("Please enter a valid answer (yes/no)")
+```
+
+Part 4: Design Your Main Menu
+
+Your main menu will be contained in a while loop, where the condition to exit the loop will be based on the user’s choice. The condition can be such that the loop only continues if the user’s choice at any point is not quit. This main menu is similar to that of the previous Exercise, with the difference being that the function call for each option doesn’t pass through arguments like conn and cursor.
+
+1.	Inside this loop, lay out print statements that display six options:
+    - Create a new recipe
+    - View all recipes
+    - Search for recipes by ingredients
+    - Edit a recipe
+    - Delete a recipe
+    - Additionally, tell the user to type quit to quit the application.
+2.	Using if-elif statements, launch the corresponding function based on the user’s input. Use an else statement at the end to handle any malformed input by informing the users of this error and having the loop simply continue to its next iteration to display the main menu again.
+3.	Once the user chooses to quit, close session and engine with their respective close() methods, and the script ends there.
+
+```
+# Part 4: Design Your Main Menu
+
+while True:
+    print("\nMain Menu:")
+    print("1. Create a new recipe")
+    print("2. View all recipes")
+    print("3. Search for recipes by ingredients")
+    print("4. Edit a recipe")
+    print("5. Delete a recipe")
+    print("Type 'quit' to quit the application")
+
+    choice = input("Enter your choice: ")
+
+    if choice == "1":
+        create_recipe()
+    elif choice == "2":
+        view_all_recipes()
+    elif choice == "3":
+        search_by_ingredients()
+    elif choice == "4":
+        edit_recipe()
+    elif choice == "5":
+        delete_recipe()
+    elif choice.lower() == "quit":
+        break
+    else:
+        print("Invalid choice. Please try again.")
+        continue
+
+session.close()
+engine.dispose()
+```
+
+## Part 5 - Final program functionality:
+
+1. Creating a new recipe.
+
+![step1](exercise-1.7/step1.png)
+
+2. Viewing all recipes.
+
+![step2](exercise-1.7/step2.png)
+
+3. Searching for recipe(s) by ingredient(s).
+
+![step3](exercise-1.7/step3.png)
+
+4. Editing a recipe.
+
+![step4](exercise-1.7/step4.png)
+
+5. Deleting a recipe
+
+![step5](exercise-1.7/step5.png)
